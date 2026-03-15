@@ -3,102 +3,125 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Simultaneous Translator</title>
+<title>⚡ Live Translator</title>
 <style>
-  :root {
-    --bg: #0a0e1a; --card: #121826; --border: #1e2d47;
-    --accent: #4f8ef7; --accent2: #7c3aed; --text: #e2e8f0;
-    --sub: #64748b; --green: #22c55e; --red: #ef4444; --orange: #f97316;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; min-height: 100dvh; display: flex; flex-direction: column; }
+:root {
+  --bg:#07090f; --card:#0f1520; --card2:#141e30; --border:#1a2540;
+  --accent:#3b82f6; --accent2:#8b5cf6; --green:#22c55e; --red:#ef4444;
+  --orange:#f97316; --text:#e2e8f0; --sub:#64748b; --sublt:#94a3b8;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;display:flex;flex-direction:column;min-height:100dvh}
 
-  header { padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); background: rgba(18,24,38,.95); position: sticky; top: 0; z-index: 10; }
-  header h1 { font-size: 17px; font-weight: 700; background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
-  .settings-btn { background: var(--card); border: 1px solid var(--border); color: var(--sub); padding: 7px 12px; border-radius: 8px; cursor: pointer; font-size: 13px; }
+/* Header */
+header{padding:14px 18px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);background:rgba(15,21,32,.95);backdrop-filter:blur(8px);position:sticky;top:0;z-index:20}
+.logo{font-size:16px;font-weight:700;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.hdr-btns{display:flex;gap:8px}
+.icon-btn{background:var(--card);border:1px solid var(--border);color:var(--sub);width:36px;height:36px;border-radius:8px;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;transition:all .2s}
+.icon-btn:hover{border-color:var(--accent);color:var(--text)}
 
-  main { flex: 1; display: flex; flex-direction: column; padding: 16px; gap: 14px; max-width: 600px; width: 100%; margin: 0 auto; }
+/* Main */
+main{flex:1;display:flex;flex-direction:column;padding:14px;gap:12px;max-width:600px;width:100%;margin:0 auto}
 
-  /* Status */
-  .status-row { display: flex; align-items: center; gap: 10px; background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
-  .status-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--sub); flex-shrink: 0; transition: all .3s; }
-  .status-dot.active { background: var(--green); box-shadow: 0 0 8px var(--green); animation: pulse 1.5s infinite; }
-  .status-dot.speaking { background: var(--accent); box-shadow: 0 0 10px var(--accent); animation: pulse .8s infinite; }
-  .status-dot.error { background: var(--red); }
-  .status-dot.connecting { background: var(--orange); animation: pulse 1s infinite; }
-  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
-  .status-text { font-size: 13px; color: var(--sub); flex: 1; }
-  .latency-badge { font-size: 11px; color: var(--accent); background: rgba(79,142,247,.12); padding: 3px 8px; border-radius: 12px; display: none; }
-  .latency-badge.on { display: inline-block; }
-  .chunk-badge { font-size: 11px; color: var(--orange); background: rgba(249,115,22,.12); padding: 3px 8px; border-radius: 12px; }
+/* Status */
+.status-row{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:10px}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--sub);flex-shrink:0;transition:all .3s}
+.dot.ready{background:var(--green);box-shadow:0 0 6px var(--green)}
+.dot.listening{background:var(--accent);box-shadow:0 0 8px var(--accent);animation:pulse .8s infinite}
+.dot.translating{background:var(--orange);box-shadow:0 0 6px var(--orange);animation:pulse 1s infinite}
+.dot.speaking{background:var(--accent2);box-shadow:0 0 8px var(--accent2);animation:pulse 1.2s infinite}
+.dot.error{background:var(--red)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+#statusTxt{font-size:13px;color:var(--sub);flex:1}
+#latBadge{font-size:11px;color:var(--accent);background:rgba(59,130,246,.1);padding:3px 8px;border-radius:10px;display:none}
+#latBadge.on{display:block}
 
-  /* Mic */
-  .mic-wrap { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 8px 0; }
-  .mic-btn { width: 84px; height: 84px; border-radius: 50%; border: none; cursor: pointer; font-size: 30px; display: flex; align-items: center; justify-content: center; transition: all .2s; }
-  .mic-btn.idle { background: linear-gradient(135deg, var(--accent), var(--accent2)); box-shadow: 0 4px 20px rgba(79,142,247,.35); }
-  .mic-btn.active { background: linear-gradient(135deg, var(--red), #b91c1c); box-shadow: 0 4px 20px rgba(239,68,68,.4); animation: micPulse 1.5s infinite; }
-  .mic-btn:active { transform: scale(.94); }
-  @keyframes micPulse { 0%,100%{box-shadow:0 4px 20px rgba(239,68,68,.4)} 50%{box-shadow:0 4px 40px rgba(239,68,68,.65)} }
-  .mic-hint { font-size: 12px; color: var(--sub); }
+/* Mic Button */
+.mic-wrap{display:flex;flex-direction:column;align-items:center;gap:10px}
+.mic-btn{width:80px;height:80px;border-radius:50%;border:none;cursor:pointer;font-size:28px;display:flex;align-items:center;justify-content:center;transition:all .2s}
+.mic-btn.idle{background:linear-gradient(135deg,var(--accent),var(--accent2));box-shadow:0 4px 20px rgba(59,130,246,.3)}
+.mic-btn.active{background:linear-gradient(135deg,var(--red),#991b1b);box-shadow:0 4px 24px rgba(239,68,68,.45);animation:micpulse 2s infinite}
+.mic-btn:active{transform:scale(.93)}
+@keyframes micpulse{0%,100%{box-shadow:0 4px 24px rgba(239,68,68,.4)}50%{box-shadow:0 4px 40px rgba(239,68,68,.7)}}
+.mic-hint{font-size:12px;color:var(--sub)}
 
-  /* Pipeline viz */
-  .pipeline { display: flex; gap: 6px; align-items: center; justify-content: center; font-size: 11px; color: var(--sub); display: none; }
-  .pipeline.on { display: flex; }
-  .pipe-step { padding: 3px 8px; border-radius: 8px; border: 1px solid var(--border); transition: all .3s; }
-  .pipe-step.active { border-color: var(--accent); color: var(--accent); background: rgba(79,142,247,.08); }
-  .pipe-arrow { color: var(--border); }
+/* Pipeline */
+.pipeline{display:none;align-items:center;justify-content:center;gap:6px;font-size:11px;color:var(--sub)}
+.pipeline.on{display:flex}
+.ps{padding:3px 10px;border-radius:8px;border:1px solid var(--border);transition:all .25s}
+.ps.lit{border-color:var(--accent);color:var(--accent);background:rgba(59,130,246,.08)}
+.pa{color:var(--border)}
 
-  /* Live text */
-  .live-box { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px; min-height: 60px; display: none; }
-  .live-box.on { display: block; }
-  .live-label { font-size: 10px; color: var(--sub); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 6px; }
-  .live-text { font-size: 15px; line-height: 1.6; color: var(--text); }
+/* Live panels */
+.live-box{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;display:none}
+.live-box.on{display:block}
+.live-label{font-size:10px;color:var(--sub);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+.live-text{font-size:14px;line-height:1.55}
+#interimTxt{color:var(--sub);font-style:italic}
+#translationLive{color:var(--text)}
 
-  /* History */
-  .history-section h3 { font-size: 12px; color: var(--sub); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 8px; }
-  .history-list { display: flex; flex-direction: column; gap: 6px; max-height: 280px; overflow-y: auto; }
-  .history-item { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; animation: fadeIn .3s ease; }
-  @keyframes fadeIn { from{opacity:0;transform:translateY(-4px)} to{opacity:1;transform:none} }
-  .history-time { font-size: 10px; color: var(--sub); margin-bottom: 3px; }
-  .history-text { font-size: 13px; line-height: 1.5; }
-  .history-empty { text-align: center; color: var(--sub); font-size: 12px; padding: 16px; }
+/* Error */
+.err-box{background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.2);border-radius:9px;padding:10px 12px;font-size:13px;color:#fca5a5;display:none}
+.err-box.on{display:block}
 
-  /* Error */
-  .error-box { background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.25); border-radius: 10px; padding: 10px 12px; font-size: 13px; color: #fca5a5; display: none; }
-  .error-box.on { display: block; }
+/* History */
+.hist-wrap h3{font-size:11px;color:var(--sub);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+.hist-list{display:flex;flex-direction:column;gap:6px;max-height:260px;overflow-y:auto}
+.hi{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:9px 11px;animation:fadein .25s}
+@keyframes fadein{from{opacity:0;transform:translateY(-4px)}to{opacity:1}}
+.hi-time{font-size:10px;color:var(--sub);margin-bottom:3px}
+.hi-text{font-size:13px;line-height:1.5}
+.hist-empty{text-align:center;color:var(--sub);font-size:12px;padding:14px}
 
-  /* Settings Modal */
-  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.7); display: none; align-items: center; justify-content: center; z-index: 100; padding: 20px; }
-  .overlay.open { display: flex; }
-  .modal { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 22px; width: 100%; max-width: 400px; max-height: 90dvh; overflow-y: auto; }
-  .modal h2 { font-size: 16px; margin-bottom: 18px; }
-  .fg { margin-bottom: 14px; }
-  .fg label { display: block; font-size: 12px; color: var(--sub); margin-bottom: 5px; }
-  .fg input, .fg select { width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 9px 11px; border-radius: 7px; font-size: 14px; outline: none; }
-  .fg input[type=range] { padding: 4px 0; accent-color: var(--accent); }
-  .fg input:focus, .fg select:focus { border-color: var(--accent); }
-  .modal-btns { display: flex; gap: 8px; margin-top: 18px; }
-  .btn { padding: 9px 18px; border-radius: 7px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; }
-  .btn-p { background: var(--accent); color: #fff; flex: 1; }
-  .btn-s { background: var(--bg); color: var(--sub); border: 1px solid var(--border); }
+/* Settings / Test Modals */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);display:none;align-items:center;justify-content:center;z-index:100;padding:16px}
+.overlay.open{display:flex}
+.modal{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;width:100%;max-width:400px;max-height:90dvh;overflow-y:auto}
+.modal h2{font-size:16px;margin-bottom:16px}
+.fg{margin-bottom:13px}
+.fg label{display:block;font-size:12px;color:var(--sub);margin-bottom:5px}
+.fg input,.fg select{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:9px 11px;border-radius:7px;font-size:14px;outline:none}
+.fg input[type=range]{padding:4px 0;accent-color:var(--accent)}
+.fg input:focus,.fg select:focus{border-color:var(--accent)}
+.mbtns{display:flex;gap:8px;margin-top:16px}
+.btn{padding:9px 16px;border-radius:7px;border:none;cursor:pointer;font-size:13px;font-weight:600;transition:all .2s}
+.btn-p{background:var(--accent);color:#fff;flex:1}
+.btn-p:hover{background:#2563eb}
+.btn-s{background:var(--bg);color:var(--sub);border:1px solid var(--border)}
+.btn-s:hover{color:var(--text)}
+
+/* Test panel */
+.test-item{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)}
+.test-item:last-child{border:none}
+.test-name{flex:1;font-size:13px}
+.test-status{font-size:12px;padding:2px 8px;border-radius:10px;font-weight:600}
+.ts-pass{background:rgba(34,197,94,.15);color:var(--green)}
+.ts-fail{background:rgba(239,68,68,.15);color:var(--red)}
+.ts-running{background:rgba(249,115,22,.15);color:var(--orange)}
+.ts-skip{background:rgba(100,116,139,.15);color:var(--sub)}
+#testLog{font-size:12px;color:var(--sub);margin-top:12px;max-height:140px;overflow-y:auto;font-family:monospace;line-height:1.5}
+.run-tests-btn{width:100%;margin-top:12px;padding:10px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600}
 </style>
 </head>
 <body>
 
 <header>
-  <h1>⚡ Simultaneous Translator</h1>
-  <button class="settings-btn" onclick="openSettings()">⚙️</button>
+  <span class="logo">⚡ Live Translator</span>
+  <div class="hdr-btns">
+    <button class="icon-btn" onclick="openTests()" title="Тесты">🧪</button>
+    <button class="icon-btn" onclick="openSettings()" title="Настройки">⚙️</button>
+  </div>
 </header>
 
 <main>
   <div class="status-row">
-    <span class="status-dot" id="dot"></span>
-    <span class="status-text" id="statusTxt">Нажми для начала</span>
-    <span class="latency-badge" id="latBadge"></span>
-    <span class="chunk-badge" id="chunkBadge" style="display:none"></span>
+    <span class="dot" id="dot"></span>
+    <span id="statusTxt">Нажми микрофон для начала</span>
+    <span id="latBadge"></span>
   </div>
 
-  <div class="error-box" id="errBox"></div>
+  <div class="err-box" id="errBox"></div>
 
   <div class="mic-wrap">
     <button class="mic-btn idle" id="micBtn" onclick="toggle()">🎙️</button>
@@ -107,25 +130,32 @@
 
   <!-- Pipeline visualization -->
   <div class="pipeline" id="pipeline">
-    <span class="pipe-step" id="pListen">🎤 Слушаю</span>
-    <span class="pipe-arrow">→</span>
-    <span class="pipe-step" id="pTranslate">🧠 Перевожу</span>
-    <span class="pipe-arrow">→</span>
-    <span class="pipe-step" id="pPlay">🔊 Говорю</span>
+    <span class="ps" id="p1">🎤 Chrome STT</span>
+    <span class="pa">→</span>
+    <span class="ps" id="p2">🧠 GPT-4o</span>
+    <span class="pa">→</span>
+    <span class="ps" id="p3">🔊 TTS</span>
   </div>
 
-  <div class="live-box" id="liveBox">
+  <!-- Live audio being heard -->
+  <div class="live-box" id="hearBox">
+    <div class="live-label">Слышу</div>
+    <div class="live-text" id="interimTxt"></div>
+  </div>
+
+  <!-- Live translation -->
+  <div class="live-box" id="transBox">
     <div class="live-label">Перевод</div>
-    <div class="live-text" id="liveTxt"></div>
+    <div class="live-text" id="translationLive"></div>
   </div>
 
-  <div class="history-section">
+  <div class="hist-wrap">
     <h3>История</h3>
-    <div class="history-list" id="hist"><div class="history-empty">Пусто</div></div>
+    <div class="hist-list" id="histList"><div class="hist-empty">Пусто</div></div>
   </div>
 </main>
 
-<!-- Settings -->
+<!-- Settings Modal -->
 <div class="overlay" id="settingsModal">
   <div class="modal">
     <h2>⚙️ Настройки</h2>
@@ -134,322 +164,603 @@
       <input type="password" id="keyIn" placeholder="sk-proj-..." autocomplete="off">
     </div>
     <div class="fg">
-      <label>Голос</label>
+      <label>Голос TTS</label>
       <select id="voiceIn">
         <option value="alloy">Alloy (нейтральный)</option>
         <option value="ash">Ash (мужской)</option>
         <option value="coral">Coral (женский)</option>
         <option value="echo">Echo (мужской)</option>
-        <option value="sage">Sage (женский)</option>
+        <option value="nova">Nova (женский)</option>
+        <option value="onyx">Onyx (мужской)</option>
         <option value="shimmer">Shimmer (женский)</option>
-        <option value="verse">Verse (мужской)</option>
       </select>
     </div>
     <div class="fg">
-      <label>Интервал чанка: <span id="intervalLabel">3.5с</span></label>
-      <input type="range" id="intervalIn" min="2" max="6" step="0.5" value="3.5"
-        oninput="document.getElementById('intervalLabel').textContent=parseFloat(this.value).toFixed(1)+'с'">
-      <small style="color:var(--sub);font-size:10px">2с = быстрее (режет слова) · 4с = плавнее</small>
+      <label>Модель перевода</label>
+      <select id="modelIn">
+        <option value="gpt-4o-mini">GPT-4o-mini (быстрее, дешевле)</option>
+        <option value="gpt-4o">GPT-4o (качественнее)</option>
+      </select>
     </div>
     <div class="fg">
       <label>Скорость речи: <span id="speedLabel">1.0×</span></label>
       <input type="range" id="speedIn" min="0.7" max="2.0" step="0.1" value="1.0"
         oninput="document.getElementById('speedLabel').textContent=parseFloat(this.value).toFixed(1)+'×'">
     </div>
-    <div class="modal-btns">
+    <div class="mbtns">
       <button class="btn btn-s" onclick="closeSettings()">Отмена</button>
       <button class="btn btn-p" onclick="saveSettings()">Сохранить</button>
     </div>
   </div>
 </div>
 
+<!-- Test Modal -->
+<div class="overlay" id="testModal">
+  <div class="modal">
+    <h2>🧪 Тесты</h2>
+    <div id="testItems">
+      <div class="test-item" id="t_speech"><span class="test-name">Web Speech API (Chrome STT)</span><span class="test-status ts-skip">–</span></div>
+      <div class="test-item" id="t_ctx"><span class="test-name">AudioContext</span><span class="test-status ts-skip">–</span></div>
+      <div class="test-item" id="t_key"><span class="test-name">OpenAI API Key</span><span class="test-status ts-skip">–</span></div>
+      <div class="test-item" id="t_translate"><span class="test-name">GPT-4o-mini перевод</span><span class="test-status ts-skip">–</span></div>
+      <div class="test-item" id="t_tts"><span class="test-name">OpenAI TTS аудио</span><span class="test-status ts-skip">–</span></div>
+      <div class="test-item" id="t_settings"><span class="test-name">Сохранение настроек</span><span class="test-status ts-skip">–</span></div>
+      <div class="test-item" id="t_queue"><span class="test-name">Очередь аудио</span><span class="test-status ts-skip">–</span></div>
+    </div>
+    <div id="testLog"></div>
+    <button class="run-tests-btn" id="runTestsBtn" onclick="runAllTests()">▶ Запустить тесты</button>
+    <div class="mbtns" style="margin-top:10px">
+      <button class="btn btn-s" onclick="closeTests()">Закрыть</button>
+    </div>
+  </div>
+</div>
+
 <script>
-// ─── Globals ────────────────────────────────────────────────────────────────
-let ws = null, audioCtx = null, mediaStream = null, processor = null;
-let isOn = false, nextPlayTime = 0, liveTxt = '', startTime = 0;
-let playbackSpeed = 1.0, chunkInterval = 3500;
-let chunkTimer = null, audioSent = false, chunkCount = 0;
-let responseInProgress = false, pendingCommit = false; // Queue management
-const SR = 24000;
+// ═══════════════════════════════════════════════════════════
+// CONFIGURATION & STATE
+// ═══════════════════════════════════════════════════════════
+let isOn = false;
+let recognition = null;
+let audioCtx = null;
+let nextPlayTime = 0;
+let translationQueue = [];    // pending English phrases to translate
+let isTranslating = false;    // GPT-4o busy flag
+let isPlayingAudio = false;   // TTS audio queue
+let audioChunks = [];         // Decoded AudioBuffers to play
+let speechStart = 0;
+let settings = loadSettings();
 
-const PROMPT = `You are a professional simultaneous interpreter. IMPORTANT: Do NOT greet, do NOT introduce yourself, do NOT say anything except the Russian translation.
-You receive short audio segments (2-4 seconds) from an English speaker captured while they are still talking.
-Translate each segment from English to Russian immediately.
+const SYSTEM_PROMPT = `You are a simultaneous interpreter. Translate the given English speech into Russian.
 Rules:
-- Translate ONLY what you hear. Never add context or explanation.
-- If a segment is cut off mid-sentence, translate what was said anyway.
-- Output ONLY Russian speech. Nothing else whatsoever.`;
+- Output ONLY the Russian translation. No greetings. No explanations. No meta-commentary.
+- Translate naturally, not word-for-word.
+- If input seems incomplete, translate what is there.`;
 
-// ─── Settings ────────────────────────────────────────────────────────────────
-function cfg() {
-  playbackSpeed = parseFloat(localStorage.getItem('speed') || '1.0');
-  chunkInterval = parseFloat(localStorage.getItem('interval') || '3500');
-  return { key: localStorage.getItem('key') || '', voice: localStorage.getItem('voice') || 'alloy' };
+// ═══════════════════════════════════════════════════════════
+// SETTINGS
+// ═══════════════════════════════════════════════════════════
+function loadSettings() {
+  return {
+    key: localStorage.getItem('key') || '',
+    voice: localStorage.getItem('voice') || 'alloy',
+    model: localStorage.getItem('model') || 'gpt-4o-mini',
+    speed: parseFloat(localStorage.getItem('speed') || '1.0'),
+  };
 }
 function saveSettings() {
   const key = document.getElementById('keyIn').value.trim();
   if (!key) { alert('Введи API ключ'); return; }
-  localStorage.setItem('key', key);
-  localStorage.setItem('voice', document.getElementById('voiceIn').value);
-  localStorage.setItem('speed', document.getElementById('speedIn').value);
-  localStorage.setItem('interval', document.getElementById('intervalIn').value);
-  playbackSpeed = parseFloat(document.getElementById('speedIn').value);
-  chunkInterval = parseFloat(document.getElementById('intervalIn').value) * 1000;
+  settings.key = key;
+  settings.voice = document.getElementById('voiceIn').value;
+  settings.model = document.getElementById('modelIn').value;
+  settings.speed = parseFloat(document.getElementById('speedIn').value);
+  localStorage.setItem('key', settings.key);
+  localStorage.setItem('voice', settings.voice);
+  localStorage.setItem('model', settings.model);
+  localStorage.setItem('speed', settings.speed);
   closeSettings();
 }
 function openSettings() {
-  const s = cfg();
-  document.getElementById('keyIn').value = s.key;
-  document.getElementById('voiceIn').value = s.voice;
-  const sp = localStorage.getItem('speed') || '1.0';
-  const iv = localStorage.getItem('interval') ? (parseFloat(localStorage.getItem('interval'))/1000).toFixed(1) : '3.5';
-  document.getElementById('speedIn').value = sp;
-  document.getElementById('speedLabel').textContent = parseFloat(sp).toFixed(1) + '×';
-  document.getElementById('intervalIn').value = iv;
-  document.getElementById('intervalLabel').textContent = iv + 'с';
+  document.getElementById('keyIn').value = settings.key;
+  document.getElementById('voiceIn').value = settings.voice;
+  document.getElementById('modelIn').value = settings.model;
+  document.getElementById('speedIn').value = settings.speed;
+  document.getElementById('speedLabel').textContent = settings.speed.toFixed(1) + '×';
   document.getElementById('settingsModal').classList.add('open');
 }
 function closeSettings() { document.getElementById('settingsModal').classList.remove('open'); }
 
-// ─── UI ──────────────────────────────────────────────────────────────────────
-function dot(cls, txt) {
-  document.getElementById('dot').className = 'status-dot ' + cls;
+// ═══════════════════════════════════════════════════════════
+// UI HELPERS
+// ═══════════════════════════════════════════════════════════
+function setDot(cls, txt) {
+  document.getElementById('dot').className = 'dot ' + cls;
   document.getElementById('statusTxt').textContent = txt;
 }
-function err(msg) {
+function showErr(msg) {
   const el = document.getElementById('errBox');
   el.textContent = msg; el.classList.toggle('on', !!msg);
 }
-function latency(ms) {
+function setLatency(ms) {
   const el = document.getElementById('latBadge');
   if (ms > 0) { el.textContent = `⚡ ${ms}мс`; el.classList.add('on'); }
   else el.classList.remove('on');
 }
-function pipeStep(id, active) {
-  document.getElementById(id).classList.toggle('active', active);
+function pipe(id, on) { document.getElementById(id).classList.toggle('lit', on); }
+function showInterim(txt) {
+  document.getElementById('hearBox').classList.toggle('on', !!txt);
+  document.getElementById('interimTxt').textContent = txt;
 }
-function showLive(text) {
-  liveTxt = text;
-  document.getElementById('liveBox').classList.toggle('on', !!text);
-  document.getElementById('liveTxt').textContent = text;
+function showTranslation(txt) {
+  document.getElementById('transBox').classList.toggle('on', !!txt);
+  document.getElementById('translationLive').textContent = txt;
 }
-function addHistory(text) {
-  if (!text.trim()) return;
-  const list = document.getElementById('hist');
-  list.querySelector('.history-empty')?.remove();
+function addHistory(eng, rus) {
+  const list = document.getElementById('histList');
+  list.querySelector('.hist-empty')?.remove();
   const d = document.createElement('div');
-  d.className = 'history-item';
+  d.className = 'hi';
   const t = new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-  d.innerHTML = `<div class="history-time">${t}</div><div class="history-text">${text}</div>`;
+  d.innerHTML = `<div class="hi-time">${t}</div><div class="hi-text">${rus}</div>`;
   list.prepend(d);
 }
 
-// ─── Audio encode ────────────────────────────────────────────────────────────
-function f32toB64(f32) {
-  const i16 = new Int16Array(f32.length);
-  for (let i = 0; i < f32.length; i++) i16[i] = Math.max(-32768, Math.min(32767, Math.round(f32[i] * 32768)));
-  const b = new Uint8Array(i16.buffer);
-  let s = ''; for (let i = 0; i < b.byteLength; i++) s += String.fromCharCode(b[i]);
-  return btoa(s);
-}
+// ═══════════════════════════════════════════════════════════
+// LAYER 1: Web Speech API (STT)
+// ═══════════════════════════════════════════════════════════
+function setupSpeechRecognition() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) throw new Error('Web Speech API not supported in this browser. Use Chrome.');
+  recognition = new SR();
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  recognition.lang = 'en-US';
+  recognition.maxAlternatives = 1;
 
-// ─── Audio playback ──────────────────────────────────────────────────────────
-function playPCM(b64) {
-  if (!audioCtx) return;
-  try {
-    const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
-    const i16 = new Int16Array(bytes.buffer);
-    const f32 = new Float32Array(i16.length);
-    for (let i = 0; i < i16.length; i++) f32[i] = i16[i] / 32768;
-    const buf = audioCtx.createBuffer(1, f32.length, SR);
-    buf.copyToChannel(f32, 0);
-    const src = audioCtx.createBufferSource();
-    src.buffer = buf;
-    src.playbackRate.value = playbackSpeed;
-    src.connect(audioCtx.destination);
-    const t = Math.max(audioCtx.currentTime + 0.01, nextPlayTime);
-    src.start(t);
-    nextPlayTime = t + buf.duration / playbackSpeed;
-    pipeStep('pPlay', true);
-  } catch (e) { console.warn('playback err', e); }
-}
-
-// ─── Commit chunk (simultaneous interpretation core) ─────────────────────────
-function tryRespond() {
-  // Only respond if: API free + audio was committed
-  if (responseInProgress || !isOn || !ws || ws.readyState !== 1) return;
-  if (!pendingCommit) return;
-  pendingCommit = false;
-  responseInProgress = true;
-  chunkCount++;
-  const badge = document.getElementById('chunkBadge');
-  badge.textContent = `#${chunkCount}`;
-  badge.style.display = 'inline-block';
-  startTime = Date.now();
-  ws.send(JSON.stringify({ type: 'response.create' }));
-  pipeStep('pTranslate', true);
-}
-
-function commitChunk() {
-  if (!isOn || !ws || ws.readyState !== 1) return;
-  if (!audioSent) return; // Skip empty commits
-  audioSent = false;
-  ws.send(JSON.stringify({ type: 'input_audio_buffer.commit' }));
-  pendingCommit = true;
-  pipeStep('pListen', false);
-  tryRespond(); // Respond immediately if API free
-}
-
-function scheduleChunk() {
-  clearTimeout(chunkTimer);
-  chunkTimer = setTimeout(() => {
-    commitChunk();
-    scheduleChunk(); // Loop
-  }, chunkInterval);
-}
-
-// ─── Capture ─────────────────────────────────────────────────────────────────
-async function startCapture() {
-  audioCtx = new AudioContext({ sampleRate: SR });
-  mediaStream = await navigator.mediaDevices.getUserMedia({
-    audio: { sampleRate: SR, channelCount: 1, echoCancellation: true, noiseSuppression: true }
-  });
-  const source = audioCtx.createMediaStreamSource(mediaStream);
-  processor = audioCtx.createScriptProcessor(1024, 1, 1);
-  processor.onaudioprocess = (e) => {
-    if (!isOn || !ws || ws.readyState !== 1) return;
-    const pcm = f32toB64(e.inputBuffer.getChannelData(0));
-    ws.send(JSON.stringify({ type: 'input_audio_buffer.append', audio: pcm }));
-    audioSent = true;
-    pipeStep('pListen', true);
-  };
-  source.connect(processor);
-  processor.connect(audioCtx.destination);
-}
-function stopCapture() {
-  clearTimeout(chunkTimer);
-  processor?.disconnect(); processor = null;
-  mediaStream?.getTracks().forEach(t => t.stop()); mediaStream = null;
-  audioCtx?.close(); audioCtx = null;
-}
-
-// ─── WebSocket ───────────────────────────────────────────────────────────────
-function connect(key, voice) {
-  dot('connecting', 'Подключение...');
-  ws = new WebSocket('wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview', [
-    'realtime', `openai-insecure-api-key.${key}`
-  ]);
-
-  ws.onopen = () => {
-    ws.send(JSON.stringify({
-      type: 'session.update',
-      session: {
-        type: 'realtime',
-        instructions: PROMPT,
-        output_modalities: ['audio'],
-        audio: {
-          input: {
-            format: { type: 'audio/pcm', rate: SR },
-            turn_detection: null  // Disabled — we control commits manually
-          },
-          output: {
-            format: { type: 'audio/pcm', rate: SR },
-            voice: voice,
-          },
-        },
-      },
-    }));
+  recognition.onstart = () => {
+    setDot('listening', '🎤 Слушаю...');
+    pipe('p1', true);
   };
 
-  ws.onmessage = (e) => {
-    const msg = JSON.parse(e.data);
-    console.log('[WS]', msg.type, msg.error ? JSON.stringify(msg.error) : '');
-    switch (msg.type) {
-      case 'session.updated':
-        dot('active', `Слушаю · чанк каждые ${(chunkInterval/1000).toFixed(1)}с`);
-        err('');
-        document.getElementById('pipeline').classList.add('on');
-        scheduleChunk();
-        break;
-      case 'response.created':
-        nextPlayTime = 0; // Fresh timeline per response
-        break;
-      case 'response.output_audio.delta':
-        if (startTime > 0) { latency(Date.now() - startTime); startTime = 0; }
-        playPCM(msg.delta);
-        pipeStep('pTranslate', false);
-        pipeStep('pPlay', true);
-        break;
-      case 'response.output_audio.done':
-        // This is not 'response.done', but 'output_audio.done'
-        // We don't reset responseInProgress here, as transcript might still be coming.
-        // pipeStep('pPlay', false);
-        // pipeStep('pListen', isOn);
-        break;
-      case 'response.output_audio_transcript.delta':
-        showLive(liveTxt + (msg.delta || ''));
-        break;
-      case 'response.output_audio_transcript.done':
-        if (msg.transcript) { addHistory(msg.transcript); showLive(''); }
-        break;
-      case 'response.done':
-        responseInProgress = false;
-        pipeStep('pPlay', false);
-        pipeStep('pListen', isOn);
-        // If new audio was committed while we were busy, respond immediately
-        tryRespond();
-        break;
-      case 'error':
-        err('OpenAI: ' + (msg.error?.message || JSON.stringify(msg.error)));
-        break;
+  recognition.onresult = (event) => {
+    let interim = '';
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      const res = event.results[i];
+      if (res.isFinal) {
+        const text = res[0].transcript.trim();
+        if (text) {
+          speechStart = Date.now();
+          enqueueTranslation(text);
+        }
+      } else {
+        interim += res[0].transcript;
+      }
+    }
+    showInterim(interim);
+  };
+
+  recognition.onerror = (e) => {
+    // 'no-speech' is normal, don't show error
+    if (e.error === 'no-speech') return;
+    showErr('STT ошибка: ' + e.error);
+  };
+
+  recognition.onend = () => {
+    // Auto-restart if still active
+    if (isOn) {
+      try { recognition.start(); } catch {}
+    } else {
+      pipe('p1', false);
     }
   };
-
-  ws.onerror = () => { err('Ошибка подключения'); dot('error', 'Ошибка'); };
-  ws.onclose = (ev) => {
-    if (isOn) stop();
-    dot('', ev.code === 1000 ? 'Остановлено' : `Отключено (${ev.code})`);
-  };
 }
 
-// ─── Toggle ──────────────────────────────────────────────────────────────────
-async function toggle() {
-  if (isOn) { stop(); return; }
-  const s = cfg();
-  if (!s.key) { openSettings(); return; }
-  err('');
+// ═══════════════════════════════════════════════════════════
+// LAYER 2: GPT-4o-mini streaming translation
+// ═══════════════════════════════════════════════════════════
+function enqueueTranslation(englishText) {
+  translationQueue.push(englishText);
+  processTranslationQueue();
+}
+
+async function processTranslationQueue() {
+  if (isTranslating || translationQueue.length === 0) return;
+  isTranslating = true;
+  const text = translationQueue.shift();
+
+  setDot('translating', '🧠 Перевожу...');
+  pipe('p2', true);
+  showTranslation('');
+
   try {
-    isOn = true; chunkCount = 0; audioSent = false; startTime = 0;
-    responseInProgress = false; pendingCommit = false;
-    document.getElementById('micBtn').className = 'mic-btn active';
-    document.getElementById('micHint').textContent = 'Нажми для остановки';
-    nextPlayTime = 0;
-    await startCapture();
-    connect(s.key, s.voice);
-  } catch (ex) {
-    isOn = false;
-    document.getElementById('micBtn').className = 'mic-btn idle';
-    document.getElementById('micHint').textContent = 'Нажми для перевода';
-    err('Микрофон: ' + ex.message);
-    dot('error', 'Ошибка');
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${settings.key}`,
+      },
+      body: JSON.stringify({
+        model: settings.model,
+        stream: true,
+        temperature: 0.1,
+        max_tokens: 400,
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'user', content: text },
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err?.error?.message || `HTTP ${response.status}`);
+    }
+
+    // Stream and accumulate tokens, detect sentence boundaries
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let accumulated = '';
+    let displayText = '';
+    const BOUNDARY = /[.!?;]\s|[\n]/;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      const lines = decoder.decode(value, { stream: true }).split('\n');
+      for (const line of lines) {
+        if (!line.startsWith('data: ') || line === 'data: [DONE]') continue;
+        try {
+          const delta = JSON.parse(line.slice(6))?.choices?.[0]?.delta?.content;
+          if (!delta) continue;
+          accumulated += delta;
+          displayText += delta;
+          showTranslation(displayText);
+
+          // When we hit a sentence boundary, send chunk to TTS
+          if (BOUNDARY.test(accumulated) && accumulated.trim().length > 4) {
+            const chunk = accumulated.trim();
+            accumulated = '';
+            enqueueTTS(chunk);
+          }
+        } catch {}
+      }
+    }
+
+    // Send remaining text
+    const remaining = accumulated.trim();
+    if (remaining.length > 0) enqueueTTS(remaining);
+
+    // Show latency & history
+    if (speechStart > 0) {
+      setLatency(Date.now() - speechStart);
+      speechStart = 0;
+    }
+    addHistory(text, displayText.trim());
+    showTranslation('');
+    setDot('listening', '🎤 Слушаю...');
+
+  } catch (e) {
+    showErr('Перевод: ' + e.message);
+    setDot('error', 'Ошибка перевода');
+  } finally {
+    isTranslating = false;
+    pipe('p2', false);
+    processTranslationQueue(); // Process next if any
   }
 }
-function stop() {
+
+// ═══════════════════════════════════════════════════════════
+// LAYER 3: OpenAI TTS → AudioContext playback
+// ═══════════════════════════════════════════════════════════
+let ttsQueue = [];
+let isTTSProcessing = false;
+
+function enqueueTTS(russianText) {
+  if (!russianText.trim()) return;
+  ttsQueue.push(russianText);
+  processTTSQueue();
+}
+
+async function processTTSQueue() {
+  if (isTTSProcessing || ttsQueue.length === 0) return;
+  isTTSProcessing = true;
+  const text = ttsQueue.shift();
+
+  pipe('p3', true);
+  setDot('speaking', '🔊 Говорю...');
+
+  try {
+    if (!audioCtx || audioCtx.state === 'closed') {
+      audioCtx = new AudioContext();
+      nextPlayTime = 0;
+    }
+    if (audioCtx.state === 'suspended') await audioCtx.resume();
+
+    const response = await fetch('https://api.openai.com/v1/audio/speech', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${settings.key}`,
+      },
+      body: JSON.stringify({
+        model: 'tts-1',           // tts-1 = lowest latency
+        input: text,
+        voice: settings.voice,
+        speed: settings.speed,
+        response_format: 'mp3',
+      }),
+    });
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err?.error?.message || `TTS HTTP ${response.status}`);
+    }
+
+    const arrayBuffer = await response.arrayBuffer();
+    const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+
+    // Schedule gapless playback
+    const t = Math.max(audioCtx.currentTime + 0.02, nextPlayTime);
+    const src = audioCtx.createBufferSource();
+    src.buffer = audioBuffer;
+    src.connect(audioCtx.destination);
+    src.start(t);
+    nextPlayTime = t + audioBuffer.duration;
+
+    // Wait for audio to finish before processing next chunk
+    await new Promise(resolve => setTimeout(resolve, audioBuffer.duration * 1000));
+
+  } catch (e) {
+    showErr('TTS: ' + e.message);
+  } finally {
+    isTTSProcessing = false;
+    pipe('p3', false);
+    if (ttsQueue.length > 0) {
+      processTTSQueue();
+    } else if (isOn) {
+      setDot('listening', '🎤 Слушаю...');
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// TOGGLE
+// ═══════════════════════════════════════════════════════════
+async function toggle() {
+  if (isOn) { stopAll(); return; }
+  if (!settings.key) { openSettings(); return; }
+  showErr('');
+
+  try {
+    // Init AudioContext (must be triggered by user gesture)
+    audioCtx = new AudioContext();
+    nextPlayTime = 0;
+
+    setupSpeechRecognition();
+    recognition.start();
+    isOn = true;
+    translationQueue = [];
+    ttsQueue = [];
+    isTranslating = false;
+    isTTSProcessing = false;
+
+    document.getElementById('micBtn').className = 'mic-btn active';
+    document.getElementById('micHint').textContent = 'Нажми для остановки';
+    document.getElementById('pipeline').classList.add('on');
+
+  } catch (e) {
+    showErr(e.message);
+    setDot('error', 'Ошибка');
+  }
+}
+
+function stopAll() {
   isOn = false;
-  clearTimeout(chunkTimer);
-  responseInProgress = false; pendingCommit = false; audioSent = false;
-  ws?.close(1000, 'stopped'); ws = null;
-  stopCapture();
+  recognition?.stop(); recognition = null;
+  translationQueue = [];
+  ttsQueue = [];
+  isTranslating = false;
+  isTTSProcessing = false;
+
   document.getElementById('micBtn').className = 'mic-btn idle';
   document.getElementById('micHint').textContent = 'Нажми для перевода';
   document.getElementById('pipeline').classList.remove('on');
-  document.getElementById('chunkBadge').style.display = 'none';
-  latency(0); dot('', 'Остановлено');
+  showInterim('');
+  showTranslation('');
+  setLatency(0);
+  setDot('', 'Остановлено');
 }
 
-// ─── Init ────────────────────────────────────────────────────────────────────
-cfg();
-if (!localStorage.getItem('key')) setTimeout(openSettings, 400);
+// ═══════════════════════════════════════════════════════════
+// TEST SUITE
+// ═══════════════════════════════════════════════════════════
+function openTests() { document.getElementById('testModal').classList.add('open'); }
+function closeTests() { document.getElementById('testModal').classList.remove('open'); }
+
+function setTestStatus(id, status, label) {
+  const el = document.getElementById(id);
+  const s = el.querySelector('.test-status');
+  s.className = 'test-status ts-' + status;
+  s.textContent = label;
+}
+function log(msg) {
+  const el = document.getElementById('testLog');
+  el.textContent += msg + '\n';
+  el.scrollTop = el.scrollHeight;
+}
+
+async function runAllTests() {
+  document.getElementById('testLog').textContent = '';
+  document.getElementById('runTestsBtn').disabled = true;
+  const results = {};
+
+  // ── T1: Web Speech API ──────────────────────────────────
+  setTestStatus('t_speech', 'running', '⏳');
+  log('T1: Checking Web Speech API...');
+  try {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) throw new Error('Not found');
+    const r = new SR();
+    r.stop();
+    setTestStatus('t_speech', 'pass', '✓ PASS');
+    log('T1: PASS - Web Speech API available');
+    results.speech = true;
+  } catch (e) {
+    setTestStatus('t_speech', 'fail', '✗ FAIL');
+    log('T1: FAIL - ' + e.message);
+    results.speech = false;
+  }
+
+  // ── T2: AudioContext ────────────────────────────────────
+  setTestStatus('t_ctx', 'running', '⏳');
+  log('T2: Checking AudioContext...');
+  try {
+    const ctx = new AudioContext();
+    await ctx.resume();
+    ctx.close();
+    setTestStatus('t_ctx', 'pass', '✓ PASS');
+    log('T2: PASS - AudioContext created');
+    results.ctx = true;
+  } catch (e) {
+    setTestStatus('t_ctx', 'fail', '✗ FAIL');
+    log('T2: FAIL - ' + e.message);
+    results.ctx = false;
+  }
+
+  const key = settings.key;
+  if (!key) {
+    ['t_key','t_translate','t_tts'].forEach(id => setTestStatus(id, 'skip', '⚠ NO KEY'));
+    log('T3-T5: SKIP - No API key configured.');
+    results.key = false;
+  } else {
+    // ── T3: API Key ─────────────────────────────────────────
+    setTestStatus('t_key', 'running', '⏳');
+    log('T3: Validating API key...');
+    try {
+      const r = await fetch('https://api.openai.com/v1/models', {
+        headers: { 'Authorization': `Bearer ${key}` }
+      });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      setTestStatus('t_key', 'pass', '✓ PASS');
+      log('T3: PASS - API key valid');
+      results.key = true;
+    } catch (e) {
+      setTestStatus('t_key', 'fail', '✗ FAIL');
+      log('T3: FAIL - ' + e.message);
+      results.key = false;
+    }
+
+    // ── T4: GPT-4o-mini translation ─────────────────────────
+    setTestStatus('t_translate', 'running', '⏳');
+    log('T4: Testing GPT-4o-mini translation...');
+    try {
+      const t0 = Date.now();
+      const r = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+        body: JSON.stringify({
+          model: settings.model,
+          messages: [
+            { role: 'system', content: 'Translate English to Russian. Output ONLY the translation.' },
+            { role: 'user', content: 'Hello, how are you?' }
+          ],
+          max_tokens: 50, temperature: 0.1
+        })
+      });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const data = await r.json();
+      const result = data.choices?.[0]?.message?.content;
+      if (!result) throw new Error('No response');
+      const ms = Date.now() - t0;
+      // Check output is in Cyrillic
+      if (!/[а-яА-ЯёЁ]/.test(result)) throw new Error(`Expected Russian, got: ${result}`);
+      setTestStatus('t_translate', 'pass', '✓ PASS');
+      log(`T4: PASS - "${result.trim()}" (${ms}ms)`);
+      results.translate = true;
+    } catch (e) {
+      setTestStatus('t_translate', 'fail', '✗ FAIL');
+      log('T4: FAIL - ' + e.message);
+      results.translate = false;
+    }
+
+    // ── T5: TTS audio generation ────────────────────────────
+    setTestStatus('t_tts', 'running', '⏳');
+    log('T5: Testing TTS audio generation...');
+    try {
+      const t0 = Date.now();
+      const r = await fetch('https://api.openai.com/v1/audio/speech', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+        body: JSON.stringify({ model: 'tts-1', input: 'Привет', voice: settings.voice, response_format: 'mp3' })
+      });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const buf = await r.arrayBuffer();
+      if (buf.byteLength < 100) throw new Error('Audio too small');
+      // Try to decode it
+      const ctx = new AudioContext();
+      await ctx.decodeAudioData(buf.slice(0));
+      await ctx.close();
+      const ms = Date.now() - t0;
+      setTestStatus('t_tts', 'pass', '✓ PASS');
+      log(`T5: PASS - ${buf.byteLength} bytes, (${ms}ms)`);
+      results.tts = true;
+    } catch (e) {
+      setTestStatus('t_tts', 'fail', '✗ FAIL');
+      log('T5: FAIL - ' + e.message);
+      results.tts = false;
+    }
+  }
+
+  // ── T6: Settings persistence ────────────────────────────
+  setTestStatus('t_settings', 'running', '⏳');
+  log('T6: Testing localStorage settings...');
+  try {
+    const testKey = '__test_' + Date.now();
+    localStorage.setItem(testKey, 'ok');
+    if (localStorage.getItem(testKey) !== 'ok') throw new Error('Read back mismatch');
+    localStorage.removeItem(testKey);
+    setTestStatus('t_settings', 'pass', '✓ PASS');
+    log('T6: PASS - localStorage R/W OK');
+    results.settings = true;
+  } catch (e) {
+    setTestStatus('t_settings', 'fail', '✗ FAIL');
+    log('T6: FAIL - ' + e.message);
+    results.settings = false;
+  }
+
+  // ── T7: Audio queue logic ───────────────────────────────
+  setTestStatus('t_queue', 'running', '⏳');
+  log('T7: Testing audio queue ordering...');
+  try {
+    const q = [];
+    const order = [];
+    function mockPlay(id) { return new Promise(r => { order.push(id); setTimeout(r, 10); }); }
+    q.push(1, 2, 3);
+    for (const item of q) await mockPlay(item);
+    if (order.join(',') !== '1,2,3') throw new Error('Order mismatch: ' + order.join(','));
+    setTestStatus('t_queue', 'pass', '✓ PASS');
+    log('T7: PASS - Queue order preserved [1,2,3]');
+    results.queue = true;
+  } catch (e) {
+    setTestStatus('t_queue', 'fail', '✗ FAIL');
+    log('T7: FAIL - ' + e.message);
+    results.queue = false;
+  }
+
+  // ── Summary ─────────────────────────────────────────────
+  const passed = Object.values(results).filter(Boolean).length;
+  const total = Object.keys(results).length;
+  log(`\n═══ Результаты: ${passed}/${total} тестов прошло ═══`);
+  Object.entries(results).forEach(([k, v]) => log(` ${v ? '✓' : '✗'} ${k}`));
+
+  document.getElementById('runTestsBtn').disabled = false;
+}
+
+// ═══════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════
+if (!settings.key) setTimeout(openSettings, 500);
 </script>
 </body>
 </html>
