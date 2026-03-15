@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Simultaneous Translator</title>
+<style>
+  :root {
+    --bg: #0a0e1a; --card: #121826; --border: #1e2d47;
+    --accent: #4f8ef7; --accent2: #7c3aed; --text: #e2e8f0;
+    --sub: #64748b; --green: #22c55e; --red: #ef4444; --orange: #f97316;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; min-height: 100dvh; display: flex; flex-direction: column; }
+
+  header { padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); background: rgba(18,24,38,.95); position: sticky; top: 0; z-index: 10; }
+  header h1 { font-size: 17px; font-weight: 700; background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+  .settings-btn { background: var(--card); border: 1px solid var(--border); color: var(--sub); padding: 7px 12px; border-radius: 8px; cursor: pointer; font-size: 13px; }
+
+  main { flex: 1; display: flex; flex-direction: column; padding: 16px; gap: 14px; max-width: 600px; width: 100%; margin: 0 auto; }
+
+  /* Status */
+  .status-row { display: flex; align-items: center; gap: 10px; background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
+  .status-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--sub); flex-shrink: 0; transition: all .3s; }
+  .status-dot.active { background: var(--green); box-shadow: 0 0 8px var(--green); animation: pulse 1.5s infinite; }
+  .status-dot.speaking { background: var(--accent); box-shadow: 0 0 10px var(--accent); animation: pulse .8s infinite; }
+  .status-dot.error { background: var(--red); }
+  .status-dot.connecting { background: var(--orange); animation: pulse 1s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+  .status-text { font-size: 13px; color: var(--sub); flex: 1; }
+  .latency-badge { font-size: 11px; color: var(--accent); background: rgba(79,142,247,.12); padding: 3px 8px; border-radius: 12px; display: none; }
+  .latency-badge.on { display: inline-block; }
+  .chunk-badge { font-size: 11px; color: var(--orange); background: rgba(249,115,22,.12); padding: 3px 8px; border-radius: 12px; }
+
+  /* Mic */
+  .mic-wrap { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 8px 0; }
+  .mic-btn { width: 84px; height: 84px; border-radius: 50%; border: none; cursor: pointer; font-size: 30px; display: flex; align-items: center; justify-content: center; transition: all .2s; }
+  .mic-btn.idle { background: linear-gradient(135deg, var(--accent), var(--accent2)); box-shadow: 0 4px 20px rgba(79,142,247,.35); }
+  .mic-btn.active { background: linear-gradient(135deg, var(--red), #b91c1c); box-shadow: 0 4px 20px rgba(239,68,68,.4); animation: micPulse 1.5s infinite; }
+  .mic-btn:active { transform: scale(.94); }
+  @keyframes micPulse { 0%,100%{box-shadow:0 4px 20px rgba(239,68,68,.4)} 50%{box-shadow:0 4px 40px rgba(239,68,68,.65)} }
+  .mic-hint { font-size: 12px; color: var(--sub); }
+
+  /* Pipeline viz */
+  .pipeline { display: flex; gap: 6px; align-items: center; justify-content: center; font-size: 11px; color: var(--sub); display: none; }
+  .pipeline.on { display: flex; }
+  .pipe-step { padding: 3px 8px; border-radius: 8px; border: 1px solid var(--border); transition: all .3s; }
+  .pipe-step.active { border-color: var(--accent); color: var(--accent); background: rgba(79,142,247,.08); }
+  .pipe-arrow { color: var(--border); }
+
+  /* Live text */
+  .live-box { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px; min-height: 60px; display: none; }
+  .live-box.on { display: block; }
+  .live-label { font-size: 10px; color: var(--sub); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 6px; }
+  .live-text { font-size: 15px; line-height: 1.6; color: var(--text); }
+
+  /* History */
+  .history-section h3 { font-size: 12px; color: var(--sub); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 8px; }
+  .history-list { display: flex; flex-direction: column; gap: 6px; max-height: 280px; overflow-y: auto; }
+  .history-item { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; animation: fadeIn .3s ease; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(-4px)} to{opacity:1;transform:none} }
+  .history-time { font-size: 10px; color: var(--sub); margin-bottom: 3px; }
+  .history-text { font-size: 13px; line-height: 1.5; }
+  .history-empty { text-align: center; color: var(--sub); font-size: 12px; padding: 16px; }
+
+  /* Error */
+  .error-box { background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.25); border-radius: 10px; padding: 10px 12px; font-size: 13px; color: #fca5a5; display: none; }
+  .error-box.on { display: block; }
+
+  /* Settings Modal */
+  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.7); display: none; align-items: center; justify-content: center; z-index: 100; padding: 20px; }
+  .overlay.open { display: flex; }
+  .modal { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 22px; width: 100%; max-width: 400px; max-height: 90dvh; overflow-y: auto; }
+  .modal h2 { font-size: 16px; margin-bottom: 18px; }
+  .fg { margin-bottom: 14px; }
+  .fg label { display: block; font-size: 12px; color: var(--sub); margin-bottom: 5px; }
+  .fg input, .fg select { width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 9px 11px; border-radius: 7px; font-size: 14px; outline: none; }
+  .fg input[type=range] { padding: 4px 0; accent-color: var(--accent); }
+  .fg input:focus, .fg select:focus { border-color: var(--accent); }
+  .modal-btns { display: flex; gap: 8px; margin-top: 18px; }
+  .btn { padding: 9px 18px; border-radius: 7px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; }
+  .btn-p { background: var(--accent); color: #fff; flex: 1; }
+  .btn-s { background: var(--bg); color: var(--sub); border: 1px solid var(--border); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>⚡ Simultaneous Translator</h1>
+  <button class="settings-btn" onclick="openSettings()">⚙️</button>
+</header>
+
+<main>
+  <div class="status-row">
+    <span class="status-dot" id="dot"></span>
+    <span class="status-text" id="statusTxt">Нажми для начала</span>
+    <span class="latency-badge" id="latBadge"></span>
+    <span class="chunk-badge" id="chunkBadge" style="display:none"></span>
+  </div>
+
+  <div class="error-box" id="errBox"></div>
+
+  <div class="mic-wrap">
+    <button class="mic-btn idle" id="micBtn" onclick="toggle()">🎙️</button>
+    <span class="mic-hint" id="micHint">Нажми для перевода</span>
+  </div>
+
+  <!-- Pipeline visualization -->
+  <div class="pipeline" id="pipeline">
+    <span class="pipe-step" id="pListen">🎤 Слушаю</span>
+    <span class="pipe-arrow">→</span>
+    <span class="pipe-step" id="pTranslate">🧠 Перевожу</span>
+    <span class="pipe-arrow">→</span>
+    <span class="pipe-step" id="pPlay">🔊 Говорю</span>
+  </div>
+
+  <div class="live-box" id="liveBox">
+    <div class="live-label">Перевод</div>
+    <div class="live-text" id="liveTxt"></div>
+  </div>
+
+  <div class="history-section">
+    <h3>История</h3>
+    <div class="history-list" id="hist"><div class="history-empty">Пусто</div></div>
+  </div>
+</main>
+
+<!-- Settings -->
+<div class="overlay" id="settingsModal">
+  <div class="modal">
+    <h2>⚙️ Настройки</h2>
+    <div class="fg">
+      <label>OpenAI API Key</label>
+      <input type="password" id="keyIn" placeholder="sk-proj-..." autocomplete="off">
+    </div>
+    <div class="fg">
+      <label>Голос</label>
+      <select id="voiceIn">
+        <option value="alloy">Alloy (нейтральный)</option>
+        <option value="ash">Ash (мужской)</option>
+        <option value="coral">Coral (женский)</option>
+        <option value="echo">Echo (мужской)</option>
+        <option value="sage">Sage (женский)</option>
+        <option value="shimmer">Shimmer (женский)</option>
+        <option value="verse">Verse (мужской)</option>
+      </select>
+    </div>
+    <div class="fg">
+      <label>Интервал чанка: <span id="intervalLabel">3.5с</span></label>
+      <input type="range" id="intervalIn" min="2" max="6" step="0.5" value="3.5"
+        oninput="document.getElementById('intervalLabel').textContent=parseFloat(this.value).toFixed(1)+'с'">
+      <small style="color:var(--sub);font-size:10px">2с = быстрее (режет слова) · 4с = плавнее</small>
+    </div>
+    <div class="fg">
+      <label>Скорость речи: <span id="speedLabel">1.0×</span></label>
+      <input type="range" id="speedIn" min="0.7" max="2.0" step="0.1" value="1.0"
+        oninput="document.getElementById('speedLabel').textContent=parseFloat(this.value).toFixed(1)+'×'">
+    </div>
+    <div class="modal-btns">
+      <button class="btn btn-s" onclick="closeSettings()">Отмена</button>
+      <button class="btn btn-p" onclick="saveSettings()">Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── Globals ────────────────────────────────────────────────────────────────
+let ws = null, audioCtx = null, mediaStream = null, processor = null;
+let isOn = false, nextPlayTime = 0, liveTxt = '', startTime = 0;
+let playbackSpeed = 1.0, chunkInterval = 3500;
+let chunkTimer = null, audioSent = false, chunkCount = 0;
+const SR = 24000;
+
+const PROMPT = `You are a professional simultaneous interpreter.
+You receive SHORT audio segments (2-4 seconds each) from an English speaker, captured WHILE they are still talking.
+Your task: immediately translate each segment into NATURAL Russian speech.
+
+Rules:
+- Each segment may start or end MID-SENTENCE — translate what you hear anyway.
+- Do NOT add context, pauses, or explanation.
+- Translate meaning, not word for word.
+- Output ONLY Russian speech. Nothing else.
+- Be fast. Match the pace. Even partial phrases get translated immediately.`;
+
+// ─── Settings ────────────────────────────────────────────────────────────────
+function cfg() {
+  playbackSpeed = parseFloat(localStorage.getItem('speed') || '1.0');
+  chunkInterval = parseFloat(localStorage.getItem('interval') || '3500');
+  return { key: localStorage.getItem('key') || '', voice: localStorage.getItem('voice') || 'alloy' };
+}
+function saveSettings() {
+  const key = document.getElementById('keyIn').value.trim();
+  if (!key) { alert('Введи API ключ'); return; }
+  localStorage.setItem('key', key);
+  localStorage.setItem('voice', document.getElementById('voiceIn').value);
+  localStorage.setItem('speed', document.getElementById('speedIn').value);
+  localStorage.setItem('interval', document.getElementById('intervalIn').value);
+  playbackSpeed = parseFloat(document.getElementById('speedIn').value);
+  chunkInterval = parseFloat(document.getElementById('intervalIn').value) * 1000;
+  closeSettings();
+}
+function openSettings() {
+  const s = cfg();
+  document.getElementById('keyIn').value = s.key;
+  document.getElementById('voiceIn').value = s.voice;
+  const sp = localStorage.getItem('speed') || '1.0';
+  const iv = localStorage.getItem('interval') ? (parseFloat(localStorage.getItem('interval'))/1000).toFixed(1) : '3.5';
+  document.getElementById('speedIn').value = sp;
+  document.getElementById('speedLabel').textContent = parseFloat(sp).toFixed(1) + '×';
+  document.getElementById('intervalIn').value = iv;
+  document.getElementById('intervalLabel').textContent = iv + 'с';
+  document.getElementById('settingsModal').classList.add('open');
+}
+function closeSettings() { document.getElementById('settingsModal').classList.remove('open'); }
+
+// ─── UI ──────────────────────────────────────────────────────────────────────
+function dot(cls, txt) {
+  document.getElementById('dot').className = 'status-dot ' + cls;
+  document.getElementById('statusTxt').textContent = txt;
+}
+function err(msg) {
+  const el = document.getElementById('errBox');
+  el.textContent = msg; el.classList.toggle('on', !!msg);
+}
+function latency(ms) {
+  const el = document.getElementById('latBadge');
+  if (ms > 0) { el.textContent = `⚡ ${ms}мс`; el.classList.add('on'); }
+  else el.classList.remove('on');
+}
+function pipeStep(id, active) {
+  document.getElementById(id).classList.toggle('active', active);
+}
+function showLive(text) {
+  liveTxt = text;
+  document.getElementById('liveBox').classList.toggle('on', !!text);
+  document.getElementById('liveTxt').textContent = text;
+}
+function addHistory(text) {
+  if (!text.trim()) return;
+  const list = document.getElementById('hist');
+  list.querySelector('.history-empty')?.remove();
+  const d = document.createElement('div');
+  d.className = 'history-item';
+  const t = new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  d.innerHTML = `<div class="history-time">${t}</div><div class="history-text">${text}</div>`;
+  list.prepend(d);
+}
+
+// ─── Audio encode ────────────────────────────────────────────────────────────
+function f32toB64(f32) {
+  const i16 = new Int16Array(f32.length);
+  for (let i = 0; i < f32.length; i++) i16[i] = Math.max(-32768, Math.min(32767, Math.round(f32[i] * 32768)));
+  const b = new Uint8Array(i16.buffer);
+  let s = ''; for (let i = 0; i < b.byteLength; i++) s += String.fromCharCode(b[i]);
+  return btoa(s);
+}
+
+// ─── Audio playback ──────────────────────────────────────────────────────────
+function playPCM(b64) {
+  if (!audioCtx) return;
+  try {
+    const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+    const i16 = new Int16Array(bytes.buffer);
+    const f32 = new Float32Array(i16.length);
+    for (let i = 0; i < i16.length; i++) f32[i] = i16[i] / 32768;
+    const buf = audioCtx.createBuffer(1, f32.length, SR);
+    buf.copyToChannel(f32, 0);
+    const src = audioCtx.createBufferSource();
+    src.buffer = buf;
+    src.playbackRate.value = playbackSpeed;
+    src.connect(audioCtx.destination);
+    const t = Math.max(audioCtx.currentTime + 0.01, nextPlayTime);
+    src.start(t);
+    nextPlayTime = t + buf.duration / playbackSpeed;
+    pipeStep('pPlay', true);
+  } catch (e) { console.warn('playback err', e); }
+}
+
+// ─── Commit chunk (simultaneous interpretation core) ─────────────────────────
+function commitChunk() {
+  if (!isOn || !ws || ws.readyState !== 1) return;
+  if (!audioSent) return; // No audio to commit
+  audioSent = false;
+  chunkCount++;
+  const badge = document.getElementById('chunkBadge');
+  badge.textContent = `#${chunkCount}`;
+  badge.style.display = 'inline-block';
+  ws.send(JSON.stringify({ type: 'input_audio_buffer.commit' }));
+  ws.send(JSON.stringify({ type: 'response.create' }));
+  pipeStep('pListen', false);
+  pipeStep('pTranslate', true);
+}
+
+function scheduleChunk() {
+  clearTimeout(chunkTimer);
+  chunkTimer = setTimeout(() => {
+    commitChunk();
+    scheduleChunk(); // Loop
+  }, chunkInterval);
+}
+
+// ─── Capture ─────────────────────────────────────────────────────────────────
+async function startCapture() {
+  audioCtx = new AudioContext({ sampleRate: SR });
+  mediaStream = await navigator.mediaDevices.getUserMedia({
+    audio: { sampleRate: SR, channelCount: 1, echoCancellation: true, noiseSuppression: true }
+  });
+  const source = audioCtx.createMediaStreamSource(mediaStream);
+  processor = audioCtx.createScriptProcessor(1024, 1, 1);
+  processor.onaudioprocess = (e) => {
+    if (!isOn || !ws || ws.readyState !== 1) return;
+    const pcm = f32toB64(e.inputBuffer.getChannelData(0));
+    ws.send(JSON.stringify({ type: 'input_audio_buffer.append', audio: pcm }));
+    audioSent = true;
+    pipeStep('pListen', true);
+  };
+  source.connect(processor);
+  processor.connect(audioCtx.destination);
+}
+function stopCapture() {
+  clearTimeout(chunkTimer);
+  processor?.disconnect(); processor = null;
+  mediaStream?.getTracks().forEach(t => t.stop()); mediaStream = null;
+  audioCtx?.close(); audioCtx = null;
+}
+
+// ─── WebSocket ───────────────────────────────────────────────────────────────
+function connect(key, voice) {
+  dot('connecting', 'Подключение...');
+  ws = new WebSocket('wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview', [
+    'realtime', `openai-insecure-api-key.${key}`
+  ]);
+
+  ws.onopen = () => {
+    ws.send(JSON.stringify({
+      type: 'session.update',
+      session: {
+        type: 'realtime',
+        instructions: PROMPT,
+        output_modalities: ['audio'],
+        audio: {
+          input: {
+            format: { type: 'audio/pcm', rate: SR },
+            turn_detection: null  // Disabled — we control commits manually
+          },
+          output: {
+            format: { type: 'audio/pcm', rate: SR },
+            voice: voice,
+          },
+        },
+      },
+    }));
+  };
+
+  ws.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+    console.log('[WS]', msg.type, msg.error ? JSON.stringify(msg.error) : '');
+    switch (msg.type) {
+      case 'session.updated':
+        dot('active', `Слушаю · чанк каждые ${(chunkInterval/1000).toFixed(1)}с`);
+        err('');
+        document.getElementById('pipeline').classList.add('on');
+        scheduleChunk();
+        break;
+      case 'response.created':
+        nextPlayTime = 0; // Fresh start for each response
+        break;
+      case 'response.output_audio.delta':
+        if (startTime > 0) { latency(Date.now() - startTime); startTime = 0; }
+        playPCM(msg.delta);
+        pipeStep('pTranslate', false);
+        pipeStep('pPlay', true);
+        break;
+      case 'response.output_audio.done':
+        pipeStep('pPlay', false);
+        pipeStep('pListen', isOn);
+        break;
+      case 'response.output_audio_transcript.delta':
+        showLive(liveTxt + (msg.delta || ''));
+        break;
+      case 'response.output_audio_transcript.done':
+        if (msg.transcript) { addHistory(msg.transcript); showLive(''); }
+        break;
+      case 'error':
+        err('OpenAI: ' + (msg.error?.message || JSON.stringify(msg.error)));
+        break;
+    }
+  };
+
+  ws.onerror = () => { err('Ошибка подключения'); dot('error', 'Ошибка'); };
+  ws.onclose = (ev) => {
+    if (isOn) stop();
+    dot('', ev.code === 1000 ? 'Остановлено' : `Отключено (${ev.code})`);
+  };
+}
+
+// ─── Toggle ──────────────────────────────────────────────────────────────────
+async function toggle() {
+  if (isOn) { stop(); return; }
+  const s = cfg();
+  if (!s.key) { openSettings(); return; }
+  err('');
+  try {
+    isOn = true; chunkCount = 0; audioSent = false; startTime = Date.now();
+    document.getElementById('micBtn').className = 'mic-btn active';
+    document.getElementById('micHint').textContent = 'Нажми для остановки';
+    nextPlayTime = 0;
+    await startCapture();
+    connect(s.key, s.voice);
+  } catch (ex) {
+    isOn = false;
+    document.getElementById('micBtn').className = 'mic-btn idle';
+    document.getElementById('micHint').textContent = 'Нажми для перевода';
+    err('Микрофон: ' + ex.message);
+    dot('error', 'Ошибка');
+  }
+}
+function stop() {
+  isOn = false;
+  clearTimeout(chunkTimer);
+  ws?.close(1000, 'stopped'); ws = null;
+  stopCapture();
+  document.getElementById('micBtn').className = 'mic-btn idle';
+  document.getElementById('micHint').textContent = 'Нажми для перевода';
+  document.getElementById('pipeline').classList.remove('on');
+  document.getElementById('chunkBadge').style.display = 'none';
+  latency(0); dot('', 'Остановлено');
+}
+
+// ─── Init ────────────────────────────────────────────────────────────────────
+cfg();
+if (!localStorage.getItem('key')) setTimeout(openSettings, 400);
+</script>
+</body>
+</html>
