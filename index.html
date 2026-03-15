@@ -169,18 +169,16 @@ let ws = null, audioCtx = null, mediaStream = null, processor = null;
 let isOn = false, nextPlayTime = 0, liveTxt = '', startTime = 0;
 let playbackSpeed = 1.0, chunkInterval = 3500;
 let chunkTimer = null, audioSent = false, chunkCount = 0;
+let responseInProgress = false, pendingCommit = false; // Queue management
 const SR = 24000;
 
-const PROMPT = `You are a professional simultaneous interpreter.
-You receive SHORT audio segments (2-4 seconds each) from an English speaker, captured WHILE they are still talking.
-Your task: immediately translate each segment into NATURAL Russian speech.
-
+const PROMPT = `You are a professional simultaneous interpreter. IMPORTANT: Do NOT greet, do NOT introduce yourself, do NOT say anything except the Russian translation.
+You receive short audio segments (2-4 seconds) from an English speaker captured while they are still talking.
+Translate each segment from English to Russian immediately.
 Rules:
-- Each segment may start or end MID-SENTENCE — translate what you hear anyway.
-- Do NOT add context, pauses, or explanation.
-- Translate meaning, not word for word.
-- Output ONLY Russian speech. Nothing else.
-- Be fast. Match the pace. Even partial phrases get translated immediately.`;
+- Translate ONLY what you hear. Never add context or explanation.
+- If a segment is cut off mid-sentence, translate what was said anyway.
+- Output ONLY Russian speech. Nothing else whatsoever.`;
 
 // ─── Settings ────────────────────────────────────────────────────────────────
 function cfg() {
@@ -277,18 +275,29 @@ function playPCM(b64) {
 }
 
 // ─── Commit chunk (simultaneous interpretation core) ─────────────────────────
-function commitChunk() {
-  if (!isOn || !ws || ws.readyState !== 1) return;
-  if (!audioSent) return; // No audio to commit
-  audioSent = false;
+function tryRespond() {
+  // Only respond if: API free + audio was committed
+  if (responseInProgress || !isOn || !ws || ws.readyState !== 1) return;
+  if (!pendingCommit) return;
+  pendingCommit = false;
+  responseInProgress = true;
   chunkCount++;
   const badge = document.getElementById('chunkBadge');
   badge.textContent = `#${chunkCount}`;
   badge.style.display = 'inline-block';
-  ws.send(JSON.stringify({ type: 'input_audio_buffer.commit' }));
+  startTime = Date.now();
   ws.send(JSON.stringify({ type: 'response.create' }));
-  pipeStep('pListen', false);
   pipeStep('pTranslate', true);
+}
+
+function commitChunk() {
+  if (!isOn || !ws || ws.readyState !== 1) return;
+  if (!audioSent) return; // Skip empty commits
+  audioSent = false;
+  ws.send(JSON.stringify({ type: 'input_audio_buffer.commit' }));
+  pendingCommit = true;
+  pipeStep('pListen', false);
+  tryRespond(); // Respond immediately if API free
 }
 
 function scheduleChunk() {
@@ -363,7 +372,7 @@ function connect(key, voice) {
         scheduleChunk();
         break;
       case 'response.created':
-        nextPlayTime = 0; // Fresh start for each response
+        nextPlayTime = 0; // Fresh timeline per response
         break;
       case 'response.output_audio.delta':
         if (startTime > 0) { latency(Date.now() - startTime); startTime = 0; }
@@ -372,14 +381,23 @@ function connect(key, voice) {
         pipeStep('pPlay', true);
         break;
       case 'response.output_audio.done':
-        pipeStep('pPlay', false);
-        pipeStep('pListen', isOn);
+        // This is not 'response.done', but 'output_audio.done'
+        // We don't reset responseInProgress here, as transcript might still be coming.
+        // pipeStep('pPlay', false);
+        // pipeStep('pListen', isOn);
         break;
       case 'response.output_audio_transcript.delta':
         showLive(liveTxt + (msg.delta || ''));
         break;
       case 'response.output_audio_transcript.done':
         if (msg.transcript) { addHistory(msg.transcript); showLive(''); }
+        break;
+      case 'response.done':
+        responseInProgress = false;
+        pipeStep('pPlay', false);
+        pipeStep('pListen', isOn);
+        // If new audio was committed while we were busy, respond immediately
+        tryRespond();
         break;
       case 'error':
         err('OpenAI: ' + (msg.error?.message || JSON.stringify(msg.error)));
@@ -401,7 +419,8 @@ async function toggle() {
   if (!s.key) { openSettings(); return; }
   err('');
   try {
-    isOn = true; chunkCount = 0; audioSent = false; startTime = Date.now();
+    isOn = true; chunkCount = 0; audioSent = false; startTime = 0;
+    responseInProgress = false; pendingCommit = false;
     document.getElementById('micBtn').className = 'mic-btn active';
     document.getElementById('micHint').textContent = 'Нажми для остановки';
     nextPlayTime = 0;
@@ -418,6 +437,7 @@ async function toggle() {
 function stop() {
   isOn = false;
   clearTimeout(chunkTimer);
+  responseInProgress = false; pendingCommit = false; audioSent = false;
   ws?.close(1000, 'stopped'); ws = null;
   stopCapture();
   document.getElementById('micBtn').className = 'mic-btn idle';
